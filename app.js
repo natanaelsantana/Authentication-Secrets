@@ -26,7 +26,7 @@ app.use(session({
   }));
 
   app.use(passport.initialize());
-  app.use(passport.session());
+  app.use(passport.authenticate('session'));
 
 mongoose.connect("mongodb://127.0.0.1:27017/userDB");
 
@@ -96,12 +96,38 @@ app.get("/register", function (req, res) {
 
 })
 
-app.get("/secrets", function (req, res) {
+
+app.get("/secrets",  async function (req, res) {
+    try {
+        const foundUsers = await User.find({"secret": {$ne: null}});
+        if (foundUsers) {
+            res.render("secrets", {usersWithSecrets: foundUsers});
+          }
+      } catch (err) {
+        console.log(err);
+      }
+});
+
+app.get("/submit", function (req, res) {
     if (req.isAuthenticated ()) {
-        res.render("secrets")
+        res.render("submit")
     } else {
         res.redirect("/login")
     }
+});
+
+app.post("/submit", async function (req, res){
+    const submittedSecret = req.body.secret;
+//Once the user is authenticated and their session gets saved, their user details are saved to req.user.
+
+  try {
+    const foundUser = await User.findById(req.user.id);
+    foundUser.secret = submittedSecret;
+    await foundUser.save();
+    res.redirect("/secrets");
+  } catch (err) {
+    console.log(err);
+  }
 });
 
 /*Passport oficial site say to use "POST" instead "GET" in order to prevent some accidental 
@@ -147,6 +173,7 @@ app.post("/login", function (req,res) {
 
       });
 })
+
 
 
 app.listen(3000,function() {
